@@ -27,46 +27,38 @@ class ObstacleDetectionNode : public rclcpp::Node {
 
  private:
   int points_threthold = 2000;
-  float phi = 30;              // degree
   float dist_threthold = 1.5;  // meter
-  float width = 1.0;           // meter
-  float y_offset = -0.3;
   void pointCloudCallback(const sensor_msgs::msg::PointCloud2::SharedPtr msg) {
     // Convert PointCloud2 to PCL data
     pcl::PointCloud<pcl::PointXYZ> pcl_cloud;
     pcl::fromROSMsg(*msg, pcl_cloud);
 
-    // Check for obstacle
     bool obstacle_detected = false;
     int count = 0;
+    ////////////////////////////////////////////////////////////////////////////
+    /// loop through all the points in the point cloud//////////////////////////
     for (const auto &point : pcl_cloud.points) {
-      // Example condition: Check if any point is within a radius of 1 meter
       if (point.x > 0) {
-        // if (point.x / sqrt(point.x * point.x + point.y * point.y) >
-        //     cos(phi / 180.0 * M_PI)) {
-        if (y_offset + width / 2.0 > point.y &&
-            y_offset - width / 2.0 < point.y && point.z > -0.3) {
-          if (point.x < dist_threthold) {
-            count++;
-          }
+        if (sqrt(point.x * point.x + point.y * point.y) < dist_threthold) {
+          count++;
         }
       }
     }
+    ///////////////////////////////////////////////////////////////////////////
+    ///////////////////////////////////////////////////////////////////////////
     RCLCPP_INFO(this->get_logger(), "Detected %d points", count);
     if (count > points_threthold) {
       obstacle_detected = true;
     }
+    auto cmd_vel_msg = geometry_msgs::msg::Twist();
     if (!obstacle_detected) {
-      auto cmd_vel_msg = geometry_msgs::msg::Twist();
       cmd_vel_msg.linear.x = 300.0;
       cmd_vel_msg.angular.z = 0.0;
-      cmd_vel_publisher_->publish(cmd_vel_msg);
     } else {
-      auto cmd_vel_msg = geometry_msgs::msg::Twist();
       cmd_vel_msg.linear.x = 0.0;
       cmd_vel_msg.angular.z = 0.0;
-      cmd_vel_publisher_->publish(cmd_vel_msg);
     }
+    cmd_vel_publisher_->publish(cmd_vel_msg);
     // Publish the result
     auto output_msg = std_msgs::msg::Bool();
     output_msg.data = obstacle_detected;
